@@ -1,0 +1,204 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>hakim-blockchain</title>
+  <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    body {
+      background: #0d1117;
+      color: #c9d1d9;
+      font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    h1, h2 {
+      color: #58a6ff;
+      text-align: center;
+    }
+    #balance {
+      text-align: center;
+      font-size: 18px;
+      margin-bottom: 20px;
+    }
+    .exchange-board {
+      background: #161b22;
+      border: 1px solid #30363d;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 0 auto 20px auto;
+      max-width: 900px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .transactions-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .transactions-table th, .transactions-table td {
+      padding: 8px;
+      border-bottom: 1px solid #30363d;
+      text-align: left;
+      font-size: 14px;
+    }
+    #chart-container {
+      height: 300px;
+      max-width: 900px;
+      margin: 20px auto;
+    }
+    #chain {
+      display: flex;
+      overflow-x: auto;
+      padding: 10px;
+    }
+    .block {
+      background: #161b22;
+      border: 2px solid #58a6ff;
+      border-radius: 10px;
+      padding: 10px;
+      margin-right: 10px;
+      min-width: 140px;
+      text-align: center;
+      cursor: pointer;
+      position: relative;
+    }
+    .block::after {
+      content: "⛓️";
+      position: absolute;
+      top: 50%;
+      right: -15px;
+      transform: translateY(-50%);
+    }
+    .block:last-child::after {
+      display: none;
+    }
+    #block-details {
+      background: #161b22;
+      border: 1px solid #30363d;
+      padding: 15px;
+      border-radius: 8px;
+      max-width: 900px;
+      margin: 20px auto;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Hakim Blockchain Explorer</h1>
+  <div id="balance"></div>
+  <div id="chart-container"></div>
+
+  <div class="exchange-board">
+    <h2>Order Book - $hakimcoin</h2>
+    <table class="transactions-table">
+      <thead><tr><th>Time</th><th>Buyer</th><th>Seller</th><th>Amount</th></tr></thead>
+      <tbody id="exchangeTable"></tbody>
+    </table>
+  </div>
+
+  <div id="chain"></div>
+  <div id="block-details"></div>
+
+  <script>
+    const totalSupply = 100000000;
+    let price = 1000;
+    let volume24h = 0;
+    let marketcap = totalSupply * price;
+    let hakimBalance = 0;
+    let blockIndex = 0;
+
+    const balanceDiv = document.getElementById('balance');
+    const chainDiv = document.getElementById('chain');
+    const exchangeTable = document.getElementById('exchangeTable');
+    const blockDetails = document.getElementById('block-details');
+
+    function updateBalance() {
+      marketcap = totalSupply * price;
+      balanceDiv.innerText = `MarketCap: $${marketcap.toLocaleString()} | 24h Volume: $${volume24h.toLocaleString()} | Price: $${price.toFixed(2)}`;
+    }
+
+    function randomWallet() {
+      return '0x' + Math.random().toString(16).substring(2, 10);
+    }
+
+    function getTimeString() {
+      return new Date().toLocaleTimeString('en-US', { hour12: false });
+    }
+
+    function addTransaction(buyer, seller, amount) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${getTimeString()}</td><td>${buyer}</td><td>${seller}</td><td>$${amount.toFixed(2)}</td>`;
+      exchangeTable.insertBefore(tr, exchangeTable.firstChild);
+      if (exchangeTable.childNodes.length > 20) {
+        exchangeTable.removeChild(exchangeTable.lastChild);
+      }
+    }
+
+    function mineBlock() {
+      hakimBalance += 5;
+      const txCount = Math.floor(Math.random() * 4000) + 3000;
+      let blockTotal = 0;
+      const prevHash = Math.random().toString(36).substring(2, 10);
+      const block = document.createElement('div');
+      block.className = 'block';
+      blockIndex++;
+      block.innerHTML = `Block #${blockIndex}`;
+      block.onclick = () => {
+        blockDetails.style.display = 'block';
+        blockDetails.innerHTML = `
+          <h2>Block #${blockIndex}</h2>
+          <p>Total Tx: ${txCount}</p>
+          <p>Total Amount: $${blockTotal.toFixed(2)}</p>
+          <p>Prev Hash: ${prevHash}</p>
+        `;
+      };
+
+      for (let i = 0; i < txCount; i++) {
+        const buyer = randomWallet();
+        const seller = randomWallet();
+        const amount = Math.random() * 100 + 1;
+        blockTotal += amount;
+        volume24h += amount;
+        if (i < 50) addTransaction(buyer, seller, amount);
+      }
+
+      chainDiv.appendChild(block);
+      updateBalance();
+    }
+
+    const chart = LightweightCharts.createChart(document.getElementById('chart-container'), {
+      layout: { background: { color: '#0d1117' }, textColor: '#c9d1d9' },
+      grid: { vertLines: { color: '#30363d' }, horzLines: { color: '#30363d' } },
+      timeScale: { timeVisible: true, secondsVisible: false }
+    });
+    const candleSeries = chart.addCandlestickSeries();
+
+    function updateChart() {
+      const time = Math.floor(Date.now() / 1000);
+      const open = price;
+      const close = open + (Math.random() - 0.5) * 10;
+      const high = Math.max(open, close) + Math.random() * 5;
+      const low = Math.min(open, close) - Math.random() * 5;
+      price = close;
+      candleSeries.update({ time, open, high, low, close });
+      updateBalance();
+    }
+
+    setInterval(updateChart, 60000);
+    setInterval(mineBlock, 120000);
+    setInterval(() => {
+      const buyer = randomWallet();
+      const seller = randomWallet();
+      const amount = Math.random() * 100 + 1;
+      volume24h += amount;
+      addTransaction(buyer, seller, amount);
+      updateBalance();
+    }, 20);
+
+    updateChart();
+    updateBalance();
+  </script>
+
+</body>
+</html>
